@@ -116,3 +116,212 @@ multi-user.target.wants                 ssh.socket                         x11-c
 
 ```
 ![image](https://user-images.githubusercontent.com/33985509/74244820-51fbd580-4ce2-11ea-8dba-c1ea4e17d37a.png)
+
+
+
+$ cat systemd-timedated.service
+
+```
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Time & Date Service
+Documentation=man:systemd-timedated.service(8) man:localtime(5)
+Documentation=http://www.freedesktop.org/wiki/Software/systemd/timedated
+
+[Service]
+ExecStart=/lib/systemd/systemd-timedated
+BusName=org.freedesktop.timedate1
+CapabilityBoundingSet=CAP_SYS_TIME
+WatchdogSec=3min
+PrivateTmp=yes
+ProtectSystem=yes
+ProtectHome=yes
+
+```
+
+
+
+cat systemd-resolved.service
+
+
+```
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Network Name Resolution
+Documentation=man:systemd-resolved.service(8)
+After=systemd-networkd.service network.target
+
+# On kdbus systems we pull in the busname explicitly, because it
+# carries policy that allows the daemon to acquire its name.
+Wants=org.freedesktop.resolve1.busname
+After=org.freedesktop.resolve1.busname
+
+[Service]
+Type=notify
+Restart=always
+RestartSec=0
+ExecStart=/lib/systemd/systemd-resolved
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_SETPCAP CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER
+ProtectSystem=full
+ProtectHome=yes
+WatchdogSec=3min
+
+[Install]
+WantedBy=multi-user.target
+
+```
+
+
+$ cat systemd-networkd.service
+
+
+```
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Network Service
+Documentation=man:systemd-networkd.service(8)
+ConditionCapability=CAP_NET_ADMIN
+DefaultDependencies=no
+# systemd-udevd.service can be dropped once tuntap is moved to netlink
+After=systemd-udevd.service network-pre.target systemd-sysusers.service systemd-sysctl.service
+Before=network.target multi-user.target shutdown.target
+Conflicts=shutdown.target
+Wants=network.target
+
+# On kdbus systems we pull in the busname explicitly, because it
+# carries policy that allows the daemon to acquire its name.
+Wants=org.freedesktop.network1.busname
+After=org.freedesktop.network1.busname
+
+[Service]
+Type=notify
+Restart=on-failure
+RestartSec=0
+ExecStart=/lib/systemd/systemd-networkd
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SETUID CAP_SETGID CAP_SETPCAP CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER
+ProtectSystem=full
+ProtectHome=yes
+WatchdogSec=3min
+
+[Install]
+WantedBy=multi-user.target
+Also=systemd-networkd.socket
+
+```
+
+
+
+$ cat systemd-logind.service
+
+```
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Login Service
+Documentation=man:systemd-logind.service(8) man:logind.conf(5)
+Documentation=http://www.freedesktop.org/wiki/Software/systemd/logind
+Documentation=http://www.freedesktop.org/wiki/Software/systemd/multiseat
+Wants=user.slice
+After=nss-user-lookup.target user.slice
+ConditionPathExists=/lib/systemd/system/dbus.service
+
+# Ask for the dbus socket. If running over kdbus, the socket will
+# not be actually used.
+Wants=dbus.socket
+After=dbus.socket
+
+[Service]
+ExecStart=/lib/systemd/systemd-logind
+Restart=always
+RestartSec=0
+BusName=org.freedesktop.login1
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_MAC_ADMIN CAP_AUDIT_CONTROL CAP_CHOWN CAP_KILL CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_FOWNER CAP_SYS_TTY_CONFIG
+WatchdogSec=3min
+
+# Increase the default a bit in order to allow many simultaneous
+# logins since we keep one fd open per session.
+LimitNOFILE=16384
+
+```
+
+
+
+$ cat systemd-localed.service
+
+```
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Locale Service
+Documentation=man:systemd-localed.service(8) man:locale.conf(5) man:vconsole.conf(5)
+Documentation=http://www.freedesktop.org/wiki/Software/systemd/localed
+
+[Service]
+ExecStart=/lib/systemd/systemd-localed
+BusName=org.freedesktop.locale1
+CapabilityBoundingSet=
+WatchdogSec=3min
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectSystem=yes
+ProtectHome=yes
+
+```
+
+
+$ cat systemd-hostnamed.service
+
+```
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+[Unit]
+Description=Hostname Service
+Documentation=man:systemd-hostnamed.service(8) man:hostname(5) man:machine-info(5)
+Documentation=http://www.freedesktop.org/wiki/Software/systemd/hostnamed
+
+[Service]
+ExecStart=/lib/systemd/systemd-hostnamed
+BusName=org.freedesktop.hostname1
+CapabilityBoundingSet=CAP_SYS_ADMIN
+WatchdogSec=3min
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectSystem=yes
+ProtectHome=yes
+
+```
+
